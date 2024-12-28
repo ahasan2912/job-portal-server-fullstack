@@ -13,7 +13,7 @@ app.use(cors(
       'http://localhost:5173',
       'https://job-portal-application-5fee1.web.app',
       'https://job-portal-application-5fee1.firebaseapp.com'
-      ],
+    ],
     credentials: true
   }
 ));
@@ -30,7 +30,7 @@ const verifyToken = (req, res, next) => {
 
   //verify the token
   jwt.verify(token, process.env.JWT_TOKEN, (err, decoded) => {
-    if(err){
+    if (err) {
       return res.status(401).send({ message: 'unauthorized access' });
     }
     req.user = decoded;
@@ -38,8 +38,10 @@ const verifyToken = (req, res, next) => {
   })
 }
 
-const uri = `mongodb+srv://${process.env.USER_DB}:${process.env.PASS_DB}@cluster0.jqnby.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+const uri = `mongodb+srv://${process.env.USER_DB}:${process.env.PASS_DB}@cluster0.w0iow.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
+/* const uri = `mongodb+srv://${process.env.USER_DB}:${process.env.PASS_DB}@cluster0.jqnby.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+ */
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
@@ -64,7 +66,7 @@ async function run() {
 
       res.cookie('token', token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV==='production',
+        secure: process.env.NODE_ENV === 'production',
         sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
       })
         .send({ success: true });
@@ -74,7 +76,7 @@ async function run() {
     app.post('/logout', (req, res) => {
       res.clearCookie('token', {
         httpOnly: true,
-        secure: process.env.NODE_ENV==='production',
+        secure: process.env.NODE_ENV === 'production',
         sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
       })
         .send({ success: 'Logout successful' })
@@ -84,11 +86,36 @@ async function run() {
     app.get('/jobs', async (req, res) => {
       //Recruiter email.
       const email = req.query.email;
+      const sort = req.query?.sort;
+      const search = req.query?.search;
+      const min = req.query?.min;
+      const max= req.query?.max;
+
+      console.log(req.query)
       let quary = {};
+      let sortQuery = {};
+
       if (email) {
         quary = { hr_email: email }
       }
-      const cursor = jobCollection.find(quary);
+
+      if (sort === "true") {
+        sortQuery = {"salaryRange.min" : -1}
+      }
+
+      if(search){
+        quary.location={$regex:search, $options: 'i'}
+      }
+
+      if(min && max){
+        quary = {
+          ...quary,
+          "salaryRange.min": {$gte: parseInt(min)},
+          "salaryRange.max": {$lte: parseInt(max)},
+        }
+      }
+
+      const cursor = jobCollection.find(quary).sort(sortQuery);
       // const cursor = jobCollection.find();
       const result = await cursor.toArray();
       res.send(result);
@@ -115,8 +142,8 @@ async function run() {
       // console.log(req.cookies) show infomation client
 
       //token email !== query email
-      if(req.user.email !== req.query.email){
-        return res.status(403).send({message: 'Forbidden access'});
+      if (req.user.email !== req.query.email) {
+        return res.status(403).send({ message: 'Forbidden access' });
       }
 
       const cursor = jobApplicationCollection.find(quary);
@@ -197,7 +224,7 @@ async function run() {
 run().catch(console.dir);
 
 app.get('/', (req, res) => {
-  res.send("Job is falling from the sky");
+  res.send("Job portal application running");
 })
 
 app.listen(port, () => {
